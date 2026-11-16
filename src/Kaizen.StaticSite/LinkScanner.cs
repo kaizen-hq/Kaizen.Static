@@ -17,6 +17,7 @@ public static partial class LinkScanner
 
     public sealed record Reference(string Tag, string Attribute, string Raw, string? InternalPath);
 
+    /// <param name="html">Rendered HTML of one page.</param>
     /// <param name="pageUri">The URL the page was fetched from (decides how relative URLs resolve).</param>
     /// <param name="siteUrl">Configured public site URL; absolute URLs under it count as internal.</param>
     public static IReadOnlyList<Reference> Scan(string html, Uri pageUri, string siteUrl)

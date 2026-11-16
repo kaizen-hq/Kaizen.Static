@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <!-- Kaizen: no AOT, no trimming. Build-time tool + reflection. -->
+    <PublishAot>false</PublishAot>
+    <!-- One shared version for all three packages; the publish workflow overrides it from the tag (v0.1.0 -> 0.1.0). -->
+    <Version>0.1.0</Version>
+    <Authors>Kaizenio, Inc.</Authors>
+    <Company>Kaizenio, Inc.</Company>
+    <Copyright>Copyright (c) 2026 Kaizenio, Inc.</Copyright>
+  </PropertyGroup>
+</Project>

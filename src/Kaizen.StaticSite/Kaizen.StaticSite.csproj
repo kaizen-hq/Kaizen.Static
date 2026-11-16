@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <PackageId>KaizenIO.StaticSite</PackageId>
+    <PackageTags>blazor;ssr;static-site;export;sitemap;cloudflare-pages;kaizen</PackageTags>
     <Description>Kaizen.StaticSite: exports a Blazor SSR app to flat files (route/index.html, assets, sitemap, robots).</Description>
   </PropertyGroup>
   <ItemGroup>

@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <PackageId>KaizenIO.BlogEngine</PackageId>
+    <PackageTags>blazor;ssr;markdown;blog;front-matter;static-site;kaizen</PackageTags>
     <Description>Kaizen.BlogEngine: Markdig + YamlDotNet post service (YAML front matter) for Blazor SSR.</Description>
   </PropertyGroup>
   <ItemGroup>

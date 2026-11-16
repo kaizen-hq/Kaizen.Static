@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
+    <PackageId>KaizenIO.Seo</PackageId>
+    <PackageTags>blazor;ssr;seo;open-graph;json-ld;kaizen</PackageTags>
     <Description>Kaizen.Seo: head component (title, description, canonical, Open Graph, Twitter) and JSON-LD helpers.</Description>
   </PropertyGroup>
   <ItemGroup>

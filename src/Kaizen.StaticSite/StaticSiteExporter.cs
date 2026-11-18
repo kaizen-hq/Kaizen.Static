@@ -173,16 +173,21 @@ public sealed class StaticSiteExporter
         foreach (var l in _o.RobotsExtraLines) robots.AppendLine(l);
         File.WriteAllText(Safe("robots.txt"), robots.ToString(), new UTF8Encoding(false));
 
-        var manifest = new
-        {
-            site,
-            pages = inv.Routes.Where(r => pages.ContainsKey(r.Path)).Select(r => new { r.Path, file = FileFor(r.Path), r.Template, origin = r.Origin.ToString() }),
-            assets = assets.Keys.OrderBy(k => k, StringComparer.Ordinal),
-            excluded = inv.Excluded.Select(e => new { e.Template, e.Reason }),
-        };
-        File.WriteAllText(Safe("kaizen-manifest.json"), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
+        File.WriteAllText(Safe("kaizen-manifest.json"), ManifestJson(site, inv, pages.Keys, assets.Keys), new UTF8Encoding(false));
 
         return PassthroughFiles.Copy(_o, outRoot, _log, Console.Error);
+    }
+
+    /// <summary>kaizen-manifest.json: exported pages (inventory order), sorted asset routes, excluded templates. Source-generated JSON.</summary>
+    internal static string ManifestJson(string site, RouteInventory inv, IEnumerable<string> exportedPaths, IEnumerable<string> assetRoutes)
+    {
+        var exported = exportedPaths.ToHashSet(StringComparer.Ordinal);
+        var manifest = new ExportManifest(
+            site,
+            inv.Routes.Where(r => exported.Contains(r.Path)).Select(r => new ManifestPage(r.Path, FileFor(r.Path), r.Template, r.Origin.ToString())).ToList(),
+            assetRoutes.OrderBy(k => k, StringComparer.Ordinal).ToList(),
+            inv.Excluded.Select(e => new ManifestExclusion(e.Template, e.Reason)).ToList());
+        return JsonSerializer.Serialize(manifest, ManifestJsonContext.Default.ExportManifest);
     }
 
     /// <summary>sitemap.xml for the exported paths, sorted; &lt;lastmod&gt; (yyyy-MM-dd) only where a date was supplied.</summary>

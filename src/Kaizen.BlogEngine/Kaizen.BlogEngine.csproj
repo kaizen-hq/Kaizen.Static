@@ -8,5 +8,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Markdig" />
     <PackageReference Include="YamlDotNet" />
+    <!-- Source generator only: generates FrontMatterYamlContext at build time; not a runtime dependency of the package. -->
+    <PackageReference Include="Vecc.YamlDotNet.Analyzers.StaticGenerator" PrivateAssets="all" />
   </ItemGroup>
 </Project>

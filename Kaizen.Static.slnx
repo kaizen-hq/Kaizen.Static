@@ -6,6 +6,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Kaizen.BlogEngine.Tests/Kaizen.BlogEngine.Tests.csproj" />
+    <Project Path="tests/Kaizen.Seo.Tests/Kaizen.Seo.Tests.csproj" />
     <Project Path="tests/Kaizen.StaticSite.Tests/Kaizen.StaticSite.Tests.csproj" />
   </Folder>
 </Solution>

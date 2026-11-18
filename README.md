@@ -8,7 +8,9 @@ Three small .NET 11 libraries that turn a **Blazor SSR** app into a flat static 
 | `KaizenIO.Seo` | `Kaizen.Seo` | `<SeoHead/>` (title, description, canonical, Open Graph, Twitter, `article:*` dates) and JSON-LD helpers (`WebPage`, `BlogPosting`, `BreadcrumbList`, `Organization`) |
 | `KaizenIO.BlogEngine` | `Kaizen.BlogEngine` | Markdown content collections (Markdig + YamlDotNet): strict YAML front matter (`title`, `date` required; `updated`, `description`, `author`, `slug`, `tags`, `draft`, `layout`), `IContentCollection`, `ContentCatalog.FindByUrl` / `CollectionOf` |
 
-The libraries do **not** reference each other; the site wires them together. Package IDs use the `KaizenIO.` prefix because `Kaizen.*` is reserved on nuget.org by another account.
+The libraries do **not** reference each other; the site wires them together. The libraries are trim/AOT-annotated (`IsAotCompatible`):
+JSON-LD and the export manifest use System.Text.Json source generation, and front matter uses YamlDotNet's source-generated
+`StaticDeserializerBuilder`. (ASP.NET Core Razor Components themselves do not support trimming or native AOT yet.) Package IDs use the `KaizenIO.` prefix because `Kaizen.*` is reserved on nuget.org by another account.
 
 Extracted with history from [kijanawoodard/nucleics](https://github.com/kijanawoodard/nucleics) (the reference site). Issue/PR numbers like `(#10)` in older commit messages refer to that repo.
 
@@ -55,7 +57,8 @@ a missing 404 probe, an empty inventory or a reference to a dropped asset. Blazo
 
 ## Build
 
-Requires the .NET SDK pinned in `global.json` (11.0.100). Versions are managed centrally in `Directory.Packages.props`.
+Requires exactly the .NET SDK pinned in `global.json` (11.0.100, `rollForward: disable`; CI's `actions/setup-dotnet` installs that exact
+version from `global.json`). Bump `global.json` deliberately to move to a newer SDK. Versions are managed centrally in `Directory.Packages.props`.
 
 ```sh
 dotnet build Kaizen.Static.slnx

@@ -16,6 +16,10 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- Public API is documented where it matters; missing XML comments are not build errors. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Trim/AOT analyzers on (IsAotCompatible implies IsTrimmable): IL2xxx/IL3xxx warnings are build errors via TreatWarningsAsErrors.
+         Note: ASP.NET Core Razor Components themselves are not yet trim/AOT-supported (AddRazorComponents is [RequiresUnreferencedCode]);
+         this marks only what these libraries do (no reflection JSON/YAML), not the host app. -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="/" />

@@ -1,4 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Kaizen.Seo;
 
@@ -54,7 +56,33 @@ public static class JsonLd
         };
 
     /// <summary>JSON safe to inline in a script element: the default encoder escapes &lt; &gt; &amp; (no "&lt;/script&gt;" break-out).</summary>
-    public static string Serialize(object data) => JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = false });
+    /// <remarks>
+    /// Serialization uses the source-generated <see cref="JsonLdJsonContext"/> (trim/AOT-safe) for the dictionaries the builders return.
+    /// Any other runtime type (e.g. an anonymous object or a site's own record) still works in a normal app through a reflection fallback;
+    /// in a trimmed/AOT app with reflection-based serialization disabled it throws <see cref="NotSupportedException"/> naming the type.
+    /// </remarks>
+    public static string Serialize(object data) => JsonSerializer.Serialize(data, ObjectTypeInfo);
+
+    private static readonly JsonSerializerOptions Options = CreateOptions();
+    private static readonly JsonTypeInfo<object> ObjectTypeInfo = (JsonTypeInfo<object>)Options.GetTypeInfo(typeof(object));
+
+    private static JsonSerializerOptions CreateOptions()
+    {
+        // Same settings as before 0.1.1 (default encoder, not indented); only the metadata source changed.
+        var options = new JsonSerializerOptions { WriteIndented = false };
+        options.TypeInfoResolver = JsonSerializer.IsReflectionEnabledByDefault
+            ? JsonTypeInfoResolver.Combine(JsonLdJsonContext.Default, ReflectionFallback())
+            : JsonLdJsonContext.Default;
+        options.MakeReadOnly();
+        return options;
+    }
+
+    // Only reached when JsonSerializer.IsReflectionEnabledByDefault is true. Trimmed and native AOT apps default that feature switch
+    // (JsonSerializerIsReflectionEnabledByDefault) to false, and the trimmer removes this branch, so the reflection resolver is never
+    // used where it is unsafe; there, types outside JsonLdJsonContext fail with a clear NotSupportedException instead.
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Guarded by JsonSerializer.IsReflectionEnabledByDefault (false when trimming/AOT).")]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Guarded by JsonSerializer.IsReflectionEnabledByDefault (false when trimming/AOT).")]
+    private static IJsonTypeInfoResolver ReflectionFallback() => new DefaultJsonTypeInfoResolver();
 
     private static Dictionary<string, object?> Clean(Dictionary<string, object?> d)
     {

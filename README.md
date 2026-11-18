@@ -57,7 +57,8 @@ a missing 404 probe, an empty inventory or a reference to a dropped asset. Blazo
 
 ## Build
 
-Requires the .NET SDK pinned in `global.json` (11.0.100). Versions are managed centrally in `Directory.Packages.props`.
+Requires exactly the .NET SDK pinned in `global.json` (11.0.100, `rollForward: disable`; CI's `actions/setup-dotnet` installs that exact
+version from `global.json`). Bump `global.json` deliberately to move to a newer SDK. Versions are managed centrally in `Directory.Packages.props`.
 
 ```sh
 dotnet build Kaizen.Static.slnx

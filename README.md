@@ -4,7 +4,7 @@ Three small .NET 11 libraries that turn a **Blazor SSR** app into a flat static 
 
 | Package | Assembly / namespace | What it does |
 |--|--|--|
-| `KaizenIO.StaticSite` | `Kaizen.StaticSite` | Exporter: endpoint inventory, `export` / `check` / `routes` commands, `route/index.html`, `404.html`, `sitemap.xml` (honest `lastmod`), `robots.txt`, `kaizen-manifest.json`, static assets, `_headers` / `_redirects` passthrough with Cloudflare limit warnings, internal link checking |
+| `KaizenIO.StaticSite` | `Kaizen.StaticSite` | Exporter: endpoint inventory, `export` / `check` / `routes` commands, `route/index.html`, `404.html`, `sitemap.xml` (honest `lastmod`, optional noindex exclusion), `robots.txt` (custom file copied verbatim, otherwise generated), `kaizen-manifest.json`, static assets, `_headers` / `_redirects` passthrough with Cloudflare limit warnings, internal link checking |
 | `KaizenIO.Seo` | `Kaizen.Seo` | `<SeoHead/>` (title, description, canonical, Open Graph, Twitter, `article:*` dates) and JSON-LD helpers (`WebPage`, `BlogPosting`, `BreadcrumbList`, `Organization`) |
 | `KaizenIO.BlogEngine` | `Kaizen.BlogEngine` | Markdown content collections (Markdig + YamlDotNet): strict YAML front matter (`title`, `date` required; `updated`, `description`, `author`, `slug`, `tags`, `draft`, `layout`), `IContentCollection`, `ContentCatalog.FindByUrl` / `CollectionOf` |
 
@@ -54,6 +54,8 @@ dotnet run --project src/MySite -- check    # CI gate: no files written, exit 1 
 `export` boots the app on a loopback port, fetches every route, and fails (non-zero exit, stale `output/` removed) on a non-200 route,
 a missing 404 probe, an empty inventory or a reference to a dropped asset. Blazor framework scripts (`_framework/*`) are not exported unless
 `--keep-framework` is passed. Parameterised routes are exported only through an `IStaticRouteSource`.
+
+A custom `robots.txt` is copied verbatim when `StaticSiteOptions.RobotsTxtPath` is set, or when `robots.txt` (or `wwwroot/robots.txt`) is present in the passthrough directory (the repo/solution root by default, same place as `_headers` / `_redirects`). Otherwise the exporter writes an allow-all file with a Sitemap line, plus any `RobotsExtraLines`. Set `ExcludeNoIndexFromSitemap` to omit pages that have a robots `noindex` (or `none`) meta tag from `sitemap.xml`; the pages themselves are still exported.
 
 ## Build
 

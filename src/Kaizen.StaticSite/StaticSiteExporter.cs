@@ -166,12 +166,13 @@ public sealed class StaticSiteExporter
 
         var site = _o.SiteUrl.TrimEnd('/');
         var lastmods = inv.Routes.ToDictionary(r => r.Path, r => r.LastModified, StringComparer.Ordinal);
-        var sitemap = BuildSitemap(site, pages.Keys.Select(p => (p, lastmods.GetValueOrDefault(p))));
+        var sitemapRoutes = pages.Keys.Select(p => (p, lastmods.GetValueOrDefault(p)));
+        if (_o.ExcludeNoIndexFromSitemap)
+            sitemapRoutes = sitemapRoutes.Where(r => !HasNoIndex(pages[r.p]));
+        var sitemap = BuildSitemap(site, sitemapRoutes);
         File.WriteAllText(Safe("sitemap.xml"), sitemap.Declaration + Environment.NewLine + sitemap.ToString(), new UTF8Encoding(false));
 
-        var robots = new StringBuilder().AppendLine("User-agent: *").AppendLine("Allow: /").AppendLine($"Sitemap: {site}/sitemap.xml");
-        foreach (var l in _o.RobotsExtraLines) robots.AppendLine(l);
-        File.WriteAllText(Safe("robots.txt"), robots.ToString(), new UTF8Encoding(false));
+        WriteRobotsTxt(Safe("robots.txt"), site, _o, _log);
 
         File.WriteAllText(Safe("kaizen-manifest.json"), ManifestJson(site, inv, pages.Keys, assets.Keys), new UTF8Encoding(false));
 
@@ -200,5 +201,90 @@ public sealed class StaticSiteExporter
                 new XElement(ns + "url",
                     new XElement(ns + "loc", site + (r.Path == "/" ? "/" : r.Path + "/")),
                     r.LastModified is { } d ? new XElement(ns + "lastmod", d.ToString("yyyy-MM-dd")) : null))));
+    }
+
+    /// <summary>Default robots.txt: allow-all plus a Sitemap line, then any <see cref="StaticSiteOptions.RobotsExtraLines"/>.</summary>
+    public static string BuildRobotsTxt(string siteUrl, IEnumerable<string>? extraLines = null)
+    {
+        var site = siteUrl.TrimEnd('/');
+        var robots = new StringBuilder().AppendLine("User-agent: *").AppendLine("Allow: /").AppendLine($"Sitemap: {site}/sitemap.xml");
+        if (extraLines is not null)
+            foreach (var l in extraLines) robots.AppendLine(l);
+        return robots.ToString();
+    }
+
+    /// <summary>
+    /// Resolves the custom robots.txt to copy, or null to generate one.
+    /// A set <see cref="StaticSiteOptions.RobotsTxtPath"/> is returned (resolved) even if the file is missing, so the exporter can fail clearly.
+    /// Otherwise a present <c>robots.txt</c> or <c>wwwroot/robots.txt</c> under the passthrough directory is used.
+    /// </summary>
+    public static string? ResolveCustomRobotsTxt(StaticSiteOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.RobotsTxtPath))
+            return ResolveAgainst(options.RobotsTxtPath, options.PassthroughDirectory);
+
+        if (options.PassthroughDirectory is null) return null;
+        foreach (var rel in new[] { "robots.txt", Path.Combine("wwwroot", "robots.txt") })
+        {
+            var candidate = Path.GetFullPath(Path.Combine(options.PassthroughDirectory, rel));
+            if (File.Exists(candidate)) return candidate;
+        }
+        return null;
+    }
+
+    /// <summary>True when <paramref name="html"/> has a robots meta tag whose content includes the <c>noindex</c> or <c>none</c> token.</summary>
+    public static bool HasNoIndex(string html)
+    {
+        var i = 0;
+        while (true)
+        {
+            var start = html.IndexOf("<meta", i, StringComparison.OrdinalIgnoreCase);
+            if (start < 0) return false;
+            var end = html.IndexOf('>', start);
+            if (end < 0) return false;
+            i = end + 1;
+            var tag = html[start..i];
+            if (!Attr(tag, "name").Equals("robots", StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var token in Attr(tag, "content").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                if (token.Equals("noindex", StringComparison.OrdinalIgnoreCase) || token.Equals("none", StringComparison.OrdinalIgnoreCase))
+                    return true;
+        }
+    }
+
+    /// <summary>Writes a custom robots.txt verbatim when one is resolved, otherwise the generated default.</summary>
+    public static void WriteRobotsTxt(string dest, string site, StaticSiteOptions options, TextWriter log)
+    {
+        var custom = ResolveCustomRobotsTxt(options);
+        if (custom is null)
+        {
+            File.WriteAllText(dest, BuildRobotsTxt(site, options.RobotsExtraLines), new UTF8Encoding(false));
+            return;
+        }
+        if (!File.Exists(custom))
+            throw new InvalidOperationException($"robots.txt not found: '{custom}' (StaticSiteOptions.RobotsTxtPath).");
+        File.Copy(custom, dest, overwrite: true);
+        log.WriteLine("  copied robots.txt (as-is)");
+        if (options.RobotsExtraLines.Count > 0)
+            log.WriteLine("  WARN RobotsExtraLines is ignored because a custom robots.txt was supplied");
+    }
+
+    private static string ResolveAgainst(string path, string? baseDir)
+    {
+        if (Path.IsPathRooted(path)) return Path.GetFullPath(path);
+        return Path.GetFullPath(baseDir is null ? path : Path.Combine(baseDir, path));
+    }
+
+    private static string Attr(string tag, string name)
+    {
+        foreach (var quote in new[] { '"', '\'' })
+        {
+            var needle = name + "=" + quote;
+            var start = tag.IndexOf(needle, StringComparison.OrdinalIgnoreCase);
+            if (start < 0) continue;
+            start += needle.Length;
+            var end = tag.IndexOf(quote, start);
+            if (end >= 0) return tag[start..end];
+        }
+        return "";
     }
 }

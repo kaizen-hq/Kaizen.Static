@@ -29,8 +29,21 @@ public sealed class StaticSiteOptions
     /// <summary>Path that is requested to capture the 404 page; it must return HTTP 404.</summary>
     public string NotFoundProbePath { get; set; } = "/__kaizen_404_probe__";
 
-    /// <summary>Extra lines appended to robots.txt (after the default allow-all + Sitemap lines).</summary>
+    /// <summary>Extra lines appended to robots.txt (after the default allow-all + Sitemap lines). Ignored when a custom robots.txt is used.</summary>
     public List<string> RobotsExtraLines { get; } = new();
+
+    /// <summary>
+    /// Path of a custom robots.txt copied verbatim into the output root, instead of the generated allow-all + Sitemap file.
+    /// Absolute, or relative to <see cref="PassthroughDirectory"/> (then the current directory).
+    /// When null, <c>robots.txt</c> in the passthrough directory, or <c>wwwroot/robots.txt</c> under it, is used if present.
+    /// </summary>
+    public string? RobotsTxtPath { get; set; }
+
+    /// <summary>
+    /// When true, exported pages whose HTML has a robots <c>noindex</c> (or <c>none</c>) meta tag are omitted from
+    /// sitemap.xml. The pages themselves are still written. Default false, so existing sitemaps stay unchanged.
+    /// </summary>
+    public bool ExcludeNoIndexFromSitemap { get; set; }
 
     /// <summary>Routes (paths) whose non-200 status is tolerated, e.g. "/legacy".</summary>
     public HashSet<string> AllowNon200 { get; } = new(StringComparer.OrdinalIgnoreCase);

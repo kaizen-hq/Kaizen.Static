@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
@@ -22,6 +23,15 @@ public sealed class FrontMatter
 }
 
 /// <summary>
+/// Source-generated (Vecc.YamlDotNet.Analyzers.StaticGenerator) YamlDotNet type metadata for <see cref="FrontMatter"/>, used by
+/// <see cref="FrontMatterParser"/>. Infrastructure only: public because the generator emits a public partial class.
+/// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+[YamlStaticContext]
+[YamlSerializable(typeof(FrontMatter))]
+public partial class FrontMatterYamlContext : StaticContext { }
+
+/// <summary>
 /// Reads the YAML found by Markdig's YamlFrontMatter extension into <see cref="FrontMatter"/> with YamlDotNet.
 /// Standard YAML is supported (plain/quoted scalars, inline [a, b] and dash lists, | and > multi-line text, comments).
 /// Policy: STRICT. An unknown key (typo such as "dratf"), malformed YAML, a wrong type (draft: maybe, tags: scalar) or a duplicate key
@@ -29,7 +39,8 @@ public sealed class FrontMatter
 /// </summary>
 public static class FrontMatterParser
 {
-    private static readonly IDeserializer Deserializer = new DeserializerBuilder()
+    // StaticDeserializerBuilder + the source-generated FrontMatterYamlContext: no reflection, so the library is trim/AOT-safe.
+    private static readonly IDeserializer Deserializer = new StaticDeserializerBuilder(new FrontMatterYamlContext())
         .WithNamingConvention(CamelCaseNamingConvention.Instance)   // Title <-> title, and e.g. PublishedAt <-> publishedAt
         .WithDuplicateKeyChecking()                                  // a repeated key is an error, not "last one wins"
         .Build();                                                    // IgnoreUnmatchedProperties NOT set: unknown keys are errors
@@ -49,6 +60,23 @@ public static class FrontMatterParser
             var line = e.Start.Line > 0 ? $", line {fenceLine + (int)e.Start.Line}" : "";
             throw new InvalidOperationException($"{source}{line}: invalid front matter: {Friendly(e)}", e);
         }
+        catch (InvalidCastException e)
+        {
+            // The static (source-generated) deserializer reports a top-level non-mapping (e.g. "just text") as a bare cast error with
+            // no position; the reflection deserializer used before 0.1.1 wrapped it in a YamlException. Same message as before.
+            var first = FirstContentLine(yaml);
+            var line = first > 0 ? $", line {fenceLine + first}" : "";
+            throw new InvalidOperationException($"{source}{line}: invalid front matter: {WrongShape}", e);
+        }
+    }
+
+    /// <summary>1-based line of the first line that is not blank or a comment (0 if none).</summary>
+    private static int FirstContentLine(string yaml)
+    {
+        var lines = yaml.Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+            if (lines[i].Trim() is { Length: > 0 } t && !t.StartsWith('#')) return i + 1;
+        return 0;
     }
 
     private static string Friendly(YamlException e)
@@ -58,10 +86,16 @@ public static class FrontMatterParser
         var unknown = Regex.Match(m, @"^Property '([^']+)' not found");
         if (unknown.Success)
             return $"unknown key '{unknown.Groups[1].Value}' (allowed, lowercase camelCase: {Allowed}); keys are case-sensitive and typos are errors, not ignored.";
-        if (m.StartsWith("Invalid cast") || m.StartsWith("No node deserializer"))
-            return $"value has the wrong shape or type for its key (tags must be a list, e.g. [a, b] or '- a' lines; text keys take one text value; draft is true/false)";
+        // "Invalid cast"/"No node deserializer": reflection-era wording; "Unable to cast"/"not registered in the YamlDotNet static context":
+        // what the static deserializer says for the same mistakes (a scalar where a list is required, a map where text is required).
+        if (m.StartsWith("Invalid cast") || m.StartsWith("No node deserializer") || m.StartsWith("Unable to cast")
+            || m.Contains("is not registered in the YamlDotNet static context"))
+            return WrongShape;
         return m;
     }
+
+    private const string WrongShape =
+        "value has the wrong shape or type for its key (tags must be a list, e.g. [a, b] or '- a' lines; text keys take one text value; draft is true/false)";
 
     private const string Allowed = "title, date, updated, description, author, slug, tags, draft, layout";
 }

@@ -107,4 +107,17 @@ public class FrontMatterParserTests
         Assert.Contains(mention, ex.Message);
         return ex;
     }
+
+    // 0.1.1 moved to YamlDotNet's StaticDeserializerBuilder (source-generated, trim/AOT-safe). These pin the user-facing messages
+    // for the shapes whose raw YamlDotNet error text changed with that switch.
+    [Theory]
+    [InlineData("just text", "line 2")]            // top-level scalar: was a YamlException, now a bare cast error from the static deserializer
+    [InlineData("# c\n\njust text", "line 4")]     // line of the first content line, not of a comment
+    [InlineData("tags: single", "line 2")]
+    [InlineData("title: {a: 1}", "line 2")]
+    public void Wrong_shape_gets_the_friendly_message(string text, string line)
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => P(text, "docs/p.md"));
+        Assert.StartsWith($"docs/p.md, {line}: invalid front matter: value has the wrong shape or type for its key", ex.Message);
+    }
 }
